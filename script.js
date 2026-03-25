@@ -176,40 +176,67 @@ function downloadAsJPEG() {
     // Prepare preview
     preparePreview();
 
+    // Make preview visible temporarily
     const previewElement = document.getElementById('estimatePreview');
+    const previewContainer = previewElement.querySelector('.preview-container');
+    
+    previewElement.style.display = 'block';
+    previewElement.style.position = 'fixed';
+    previewElement.style.left = '0';
+    previewElement.style.top = '0';
+    previewElement.style.width = '800px';
+    previewElement.style.zIndex = '-9999';
 
-    // Use html2canvas to capture the estimate
-    html2canvas(previewElement, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        quality: 0.95
-    }).then(canvas => {
-        // Convert to JPEG
-        const jpegData = canvas.toDataURL('image/jpeg', 0.95);
+    // Delay to ensure rendering
+    setTimeout(() => {
+        // Use html2canvas to capture the preview container
+        html2canvas(previewContainer, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            allowTaint: true,
+            width: 800,
+            height: previewContainer.scrollHeight
+        }).then(canvas => {
+            // Convert to JPEG
+            const jpegData = canvas.toDataURL('image/jpeg', 0.95);
 
-        // Create download link
-        const link = document.createElement('a');
-        const today = new Date();
-        const dateStr = today.toISOString().split('T')[0];
-        const customerName = customerNameInput.value.replace(/\s+/g, '_') || 'Estimate';
-        link.download = `Estimate_${customerName}_${dateStr}.jpg`;
-        link.href = jpegData;
-        link.click();
+            // Create download link
+            const link = document.createElement('a');
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            const customerName = customerNameInput.value.replace(/\s+/g, '_') || 'Estimate';
+            link.download = `Estimate_${customerName}_${dateStr}.jpg`;
+            link.href = jpegData;
+            link.click();
 
-        // Reset button
-        downloadBtn.innerHTML = originalText;
-        downloadBtn.disabled = false;
+            // Hide preview again
+            previewElement.style.display = 'none';
+            previewElement.style.position = 'absolute';
+            previewElement.style.left = '-9999px';
+            previewElement.style.top = '-9999px';
 
-        // Show success feedback
-        showDownloadSuccess();
-    }).catch(error => {
-        console.error('Error generating image:', error);
-        alert('Error generating estimate image. Please try again.');
-        downloadBtn.innerHTML = originalText;
-        downloadBtn.disabled = false;
-    });
+            // Reset button
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.disabled = false;
+
+            // Show success feedback
+            showDownloadSuccess();
+        }).catch(error => {
+            console.error('Error generating image:', error);
+            alert('Error generating estimate image. Please try again.');
+            
+            // Hide preview
+            previewElement.style.display = 'none';
+            previewElement.style.position = 'absolute';
+            previewElement.style.left = '-9999px';
+            previewElement.style.top = '-9999px';
+            
+            downloadBtn.innerHTML = originalText;
+            downloadBtn.disabled = false;
+        });
+    }, 100);
 }
 
 // ===== SHOW DOWNLOAD SUCCESS FEEDBACK =====
