@@ -359,12 +359,15 @@ html, body {
     top: -9999px;
     width: 800px;
     background: white;
+    visibility: hidden;
 }
 
 .preview-container {
     padding: 40px;
     background: white;
     font-family: 'Georgia', serif;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .preview-header {
