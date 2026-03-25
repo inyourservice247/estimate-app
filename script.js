@@ -166,67 +166,210 @@ function preparePreview() {
     document.getElementById('previewTotalAmount').textContent = totalAmountEl.textContent;
 }
 
-// ===== DOWNLOAD AS JPEG =====
+// ===== DOWNLOAD AS JPEG (Pure Canvas) =====
 function downloadAsJPEG() {
     const originalText = downloadBtn.innerHTML;
     downloadBtn.innerHTML = '<span class="icon">⏳</span> Processing...';
     downloadBtn.disabled = true;
 
     try {
-        // Prepare preview data
-        preparePreview();
+        // Prepare data
+        const businessName = businessNameInput.value || 'Your Business';
+        const customerName = customerNameInput.value || 'N/A';
+        const estimateDate = estimateDateInput.value ? new Date(estimateDateInput.value).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+        const subtotal = parseFloat(subtotalEl.textContent) || 0;
 
-        // Get the preview container
-        const element = document.querySelector('.preview-container');
+        // Create canvas (800px wide)
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         
-        if (!element) {
-            throw new Error('Preview element not found');
+        // Set canvas dimensions
+        const width = 800;
+        const lineHeight = 24;
+        let y = 40;
+        
+        // Calculate required height
+        let estimatedHeight = 800; // start with estimate
+        
+        // Set canvas
+        canvas.width = width;
+        canvas.height = estimatedHeight;
+        
+        // Fill background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, estimatedHeight);
+
+        // Helper function to draw text
+        function drawText(text, fontSize, fontWeight, x, y, color = '#000000') {
+            ctx.fillStyle = color;
+            ctx.font = `${fontWeight} ${fontSize}px Georgia, serif`;
+            ctx.fillText(text, x, y);
+            return y + lineHeight;
         }
 
-        // Capture with html2canvas
-        html2canvas(element, {
-            backgroundColor: '#ffffff',
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            logging: false
-        }).then(canvas => {
-            if (!canvas || canvas.width === 0 || canvas.height === 0) {
-                throw new Error('Canvas generation failed');
-            }
+        // Helper function to draw line
+        function drawLine(x1, y1, x2, y1_copy, color = '#e5e7eb') {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y1_copy);
+            ctx.stroke();
+        }
 
-            // Convert canvas to image data
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        // --- HEADER ---
+        ctx.fillStyle = '#2563eb';
+        ctx.fillRect(0, 0, width, 80);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 32px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(businessName, width / 2, 40);
+        ctx.font = '14px Arial';
+        ctx.fillText('ESTIMATE', width / 2, 65);
+        
+        ctx.textAlign = 'left';
+        y = 120;
+
+        // --- CUSTOMER INFO ---
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText('CUSTOMER:', 40, y);
+        y += 20;
+        ctx.font = '14px Arial';
+        ctx.fillText(customerName, 40, y);
+        y += 25;
+
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText('DATE:', 40, y);
+        y += 20;
+        ctx.font = '14px Arial';
+        ctx.fillText(estimateDate, 40, y);
+        y += 40;
+
+        // --- TABLE HEADER ---
+        ctx.fillStyle = '#f9fafb';
+        ctx.fillRect(0, y - 20, width, 30);
+        
+        ctx.fillStyle = '#6b7280';
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText('S.No', 40, y + 5);
+        ctx.fillText('Particular', 100, y + 5);
+        ctx.fillText('Qty', 500, y + 5);
+        ctx.fillText('Rate', 580, y + 5);
+        ctx.fillText('Amount', 680, y + 5);
+        
+        // Draw table header line
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(40, y + 15);
+        ctx.lineTo(750, y + 15);
+        ctx.stroke();
+        
+        y += 30;
+
+        // --- TABLE ROWS ---
+        let rowNumber = 1;
+        document.querySelectorAll('.item-row').forEach(row => {
+            const particular = row.querySelector('.input-particular').value || '-';
+            const qty = row.querySelector('.input-qty').value || '0';
+            const rate = row.querySelector('.input-rate').value || '0';
+            const amount = row.querySelector('.amount-value').textContent || '0.00';
+
+            ctx.fillStyle = '#000000';
+            ctx.font = '13px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(rowNumber.toString(), 40, y);
+            ctx.fillText(particular.substring(0, 40), 100, y);
+            ctx.textAlign = 'right';
+            ctx.fillText(qty, 520, y);
+            ctx.fillText(rate, 620, y);
+            ctx.fillText(amount, 750, y);
             
-            if (!imgData || imgData.length < 100) {
-                throw new Error('Image data generation failed');
+            y += 28;
+            rowNumber++;
+
+            // Draw separator line
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(40, y - 5);
+            ctx.lineTo(750, y - 5);
+            ctx.stroke();
+        });
+
+        y += 20;
+
+        // --- TOTALS ---
+        ctx.fillStyle = '#f9fafb';
+        ctx.fillRect(40, y - 5, 710, 60);
+
+        ctx.fillStyle = '#6b7280';
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Subtotal:', 60, y + 10);
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 13px Arial';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(subtotal.toFixed(2), 730, y + 10);
+
+        // Total line
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(60, y + 20);
+        ctx.lineTo(730, y + 20);
+        ctx.stroke();
+
+        // Final total
+        ctx.fillStyle = '#2563eb';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('TOTAL AMOUNT:', 60, y + 45);
+        ctx.textAlign = 'right';
+        ctx.fillText(subtotal.toFixed(2), 730, y + 45);
+
+        y += 80;
+
+        // --- FOOTER ---
+        ctx.fillStyle = '#6b7280';
+        ctx.font = 'italic 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Thank you for your business!', width / 2, y);
+
+        // Now resize canvas to actual content height
+        canvas.height = y + 40;
+
+        // Convert to JPEG and download
+        canvas.toBlob(blob => {
+            if (!blob) {
+                throw new Error('Canvas to blob failed');
             }
 
-            // Create download link directly from canvas
+            // Create download link from blob
+            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             const today = new Date();
             const dateStr = today.toISOString().split('T')[0];
-            const customerName = (customerNameInput.value || 'Estimate').replace(/[^a-zA-Z0-9]/g, '_');
+            const safeCustomerName = (customerNameInput.value || 'Estimate').replace(/[^a-zA-Z0-9]/g, '_');
+            link.href = url;
+            link.download = `Estimate_${safeCustomerName}_${dateStr}.jpg`;
             
-            link.href = imgData;
-            link.download = `Estimate_${customerName}_${dateStr}.jpg`;
-            
-            // Append to body, click, remove
+            // Download
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            
+            // Cleanup
+            URL.revokeObjectURL(url);
 
             // Reset button
             downloadBtn.innerHTML = originalText;
             downloadBtn.disabled = false;
             showDownloadSuccess();
 
-        }).catch(error => {
-            console.error('Canvas error:', error);
-            downloadBtn.innerHTML = originalText;
-            downloadBtn.disabled = false;
-            alert('Error generating image: ' + error.message + '\n\nPlease try refreshing the page.');
-        });
+        }, 'image/jpeg', 0.95);
 
     } catch (error) {
         console.error('Download error:', error);
