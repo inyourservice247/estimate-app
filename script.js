@@ -168,75 +168,72 @@ function preparePreview() {
 
 // ===== DOWNLOAD AS JPEG =====
 function downloadAsJPEG() {
-    // Show loading state
     const originalText = downloadBtn.innerHTML;
     downloadBtn.innerHTML = '<span class="icon">⏳</span> Processing...';
     downloadBtn.disabled = true;
 
-    // Prepare preview
-    preparePreview();
+    try {
+        // Prepare preview data
+        preparePreview();
 
-    // Make preview visible temporarily
-    const previewElement = document.getElementById('estimatePreview');
-    const previewContainer = previewElement.querySelector('.preview-container');
-    
-    previewElement.style.display = 'block';
-    previewElement.style.position = 'fixed';
-    previewElement.style.left = '0';
-    previewElement.style.top = '0';
-    previewElement.style.width = '800px';
-    previewElement.style.zIndex = '-9999';
+        // Get the preview container
+        const element = document.querySelector('.preview-container');
+        
+        if (!element) {
+            throw new Error('Preview element not found');
+        }
 
-    // Delay to ensure rendering
-    setTimeout(() => {
-        // Use html2canvas to capture the preview container
-        html2canvas(previewContainer, {
+        // Capture with html2canvas
+        html2canvas(element, {
             backgroundColor: '#ffffff',
             scale: 2,
             useCORS: true,
-            logging: false,
             allowTaint: true,
-            width: 800,
-            height: previewContainer.scrollHeight
+            logging: false
         }).then(canvas => {
-            // Convert to JPEG
-            const jpegData = canvas.toDataURL('image/jpeg', 0.95);
+            if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                throw new Error('Canvas generation failed');
+            }
 
-            // Create download link
+            // Convert canvas to image data
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            
+            if (!imgData || imgData.length < 100) {
+                throw new Error('Image data generation failed');
+            }
+
+            // Create download link directly from canvas
             const link = document.createElement('a');
             const today = new Date();
             const dateStr = today.toISOString().split('T')[0];
-            const customerName = customerNameInput.value.replace(/\s+/g, '_') || 'Estimate';
+            const customerName = (customerNameInput.value || 'Estimate').replace(/[^a-zA-Z0-9]/g, '_');
+            
+            link.href = imgData;
             link.download = `Estimate_${customerName}_${dateStr}.jpg`;
-            link.href = jpegData;
+            
+            // Append to body, click, remove
+            document.body.appendChild(link);
             link.click();
-
-            // Hide preview again
-            previewElement.style.display = 'none';
-            previewElement.style.position = 'absolute';
-            previewElement.style.left = '-9999px';
-            previewElement.style.top = '-9999px';
+            document.body.removeChild(link);
 
             // Reset button
             downloadBtn.innerHTML = originalText;
             downloadBtn.disabled = false;
-
-            // Show success feedback
             showDownloadSuccess();
+
         }).catch(error => {
-            console.error('Error generating image:', error);
-            alert('Error generating estimate image. Please try again.');
-            
-            // Hide preview
-            previewElement.style.display = 'none';
-            previewElement.style.position = 'absolute';
-            previewElement.style.left = '-9999px';
-            previewElement.style.top = '-9999px';
-            
+            console.error('Canvas error:', error);
             downloadBtn.innerHTML = originalText;
             downloadBtn.disabled = false;
+            alert('Error generating image: ' + error.message + '\n\nPlease try refreshing the page.');
         });
-    }, 100);
+
+    } catch (error) {
+        console.error('Download error:', error);
+        downloadBtn.innerHTML = originalText;
+        downloadBtn.disabled = false;
+        alert('Error: ' + error.message);
+    }
 }
 
 // ===== SHOW DOWNLOAD SUCCESS FEEDBACK =====
